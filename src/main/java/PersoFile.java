@@ -45,7 +45,7 @@ public class PersoFile {
 
 				// Select DF File: Perso file
 				selectFile(c, 0x01, new byte[] { 0x50, 0x00 });
-				readPerso(c, 24);
+				readPerso(c, 16);
 
 				// Read EF File: Auth cert
 				System.out.format("Auth cert: %s\n", toHex(readCert(c, 0x09, new byte[] { 0x3f, 0x00, (byte) 0xAD, (byte) 0xF1, 0x34, 0x01 })));
@@ -89,7 +89,11 @@ public class PersoFile {
 		System.out.println("Perso file:");
 		for (int i = 1; i < rows; ++i) {
 			try {
-				System.out.format(" %2d: %s\n", i, new String(readFile(c, 0x02, new byte[] { 0x50, (byte) i }), StandardCharsets.UTF_8));
+                byte[] file = new byte[] { 0x50, (byte) i};
+                if (rows > 16) {
+                    file[1] = (byte) ((i / 10) * 0x10 + (i % 10));
+                }
+				System.out.format(" %2d: %s\n", i, new String(readFile(c, 0x02, file), StandardCharsets.UTF_8));
 			} catch (CardException e) {
 				System.out.format(" %2d: No info\n", i);
 			}
