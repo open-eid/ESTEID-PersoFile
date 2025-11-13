@@ -47,6 +47,12 @@ public class PersoFile {
 				selectFile(c, 0x01, new byte[] { 0x50, 0x00 });
 				readPerso(c, 16);
 
+                // Verify PIN
+                //verifyPIN(c, "1234", 0x01, 0xFF); // PIN 1
+                //verifyPIN(c, "12345678", 0x02, 0xFF); // PUK
+                //selectFile(c, 0x09, new byte[] { 0x3f, 0x00, (byte) 0xAD, (byte) 0xF2 });
+                //verifyPIN(c, "12345", 0x85, 0xFF); // PIN 2
+
 				// Read EF File: Auth cert
 				System.out.format("Auth cert: %s\n", toHex(readCert(c, 0x09, new byte[] { 0x3f, 0x00, (byte) 0xAD, (byte) 0xF1, 0x34, 0x01 })));
 
@@ -61,6 +67,11 @@ public class PersoFile {
 				// Select DF File: Perso file
 				selectFile(c, 0x08, new byte[] { (byte) 0xDF, (byte) 0xDD });
 				readPerso(c, 24);
+
+                // Verify PIN
+                //verifyPIN(c, "1234", 0x81, 0x00); // PIN 1
+                //verifyPIN(c, "12345", 0x82, 0x00); // PIN 2
+                //verifyPIN(c, "12345678", 0x83, 0x00); // PUK
 
 				// Read EF File: Auth cert
 				System.out.format("Auth cert: %s\n", toHex(readCert(c, 0x08, new byte[] { (byte) 0xAD, (byte) 0xF1, 0x34, 0x11 })));
@@ -111,6 +122,21 @@ public class PersoFile {
 		}
 		return data;
 	}
+
+    private static void verifyPIN(CardChannel c, String pin, int id, int padChar) throws CardException {
+        byte[] data = Arrays.copyOf(pin.getBytes(), 12);
+        Arrays.fill(data, pin.length(), data.length, (byte) padChar);
+        ResponseAPDU r = c.transmit(new CommandAPDU(0x00, 0x20, 0x00, id, data));
+        switch (r.getSW()) {
+            case 0x9000: return;
+            case 0x63C2: throw  new CardException("Invalid PIN: 2 retries left");
+            case 0x63C1: throw  new CardException("Invalid PIN: 1 retries left");
+            case 0x6983:
+            case 0x6984:
+            case 0x63C0: throw  new CardException("Invalid PIN: Blocked");
+            default:  throw  new CardException("Verify error");
+        }
+    }
 
 	static byte[] fromHex(String data) {
 		return hex.parseHex(data);
